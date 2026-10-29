@@ -17,6 +17,7 @@
 
 #include "util/format.hpp"
 #include "util/netlink.hpp"
+#include "util/ssid.hpp"
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
 #endif
@@ -1058,7 +1059,7 @@ void waybar::modules::Network::parseEssid(struct nlattr** bss) {
       auto essid_end = essid_begin + ies[1];
       std::string essid_raw;
       std::copy(essid_begin, essid_end, std::back_inserter(essid_raw));
-      essid_ = Glib::Markup::escape_text(essid_raw);
+      essid_ = util::ssid_to_markup(essid_raw);
     }
   }
 }

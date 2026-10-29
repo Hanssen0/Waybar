@@ -16,6 +16,7 @@ test_src = files(
     'SafeSignal.cpp',
     'format.cpp',
     'string.cpp',
+    'ssid.cpp',
     'sleeper_thread.cpp',
     'command.cpp',
     'command_line_stream.cpp',
