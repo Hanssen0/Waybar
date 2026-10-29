@@ -16,12 +16,14 @@ test_src = files(
     'SafeSignal.cpp',
     'format.cpp',
     'string.cpp',
+    'ssid.cpp',
     'sleeper_thread.cpp',
     'command.cpp',
     'command_line_stream.cpp',
     'css_reload_helper.cpp',
     '../../src/util/css_reload_helper.cpp',
     '../../src/util/command_line_stream.cpp',
+    '../../src/util/utf8_string.cpp',
 )
 
 if libnl.found() and libnlgen.found()

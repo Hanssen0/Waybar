@@ -1,5 +1,6 @@
 #include <glib.h>
 
+#include <memory>
 #include <string>
 #include <util/utf8_string.hpp>
 
@@ -38,6 +39,12 @@ size_t measure_and_truncate(std::string& str, size_t width = std::string::npos) 
   return total_width;
 }
 }  // namespace
+
+std::string utf8_make_valid(const std::string& str) {
+  const std::unique_ptr<gchar, decltype(&g_free)> valid(g_utf8_make_valid(str.data(), str.size()),
+                                                        g_free);
+  return valid.get();
+}
 
 size_t utf8_width(const std::string& str) {
   return measure_and_truncate(const_cast<std::string&>(str));
