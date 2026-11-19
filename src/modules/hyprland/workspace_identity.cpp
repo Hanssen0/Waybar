@@ -126,7 +126,7 @@ std::optional<WorkspaceIdentity> parseWorkspaceIdentity(const Json::Value& works
     const int id = workspace["id"].asInt();
     WorkspaceIdentity identity;
     identity.address = std::to_string(id);
-    identity.legacy = true;
+    identity.openWindowUsesName = true;
     if (id > 0) {
       identity.kind = WorkspaceKind::Numbered;
     } else if (isSpecialName(rawName)) {
@@ -146,7 +146,7 @@ bool WorkspaceIdentity::matchesWindowDestination(const std::string& identifier,
   // Legacy openwindow reports a name; legacy movewindowv2 reports an ID.
   // Addressable Hyprland reports the address in both events. Never match a
   // modern address against a different workspace's display name.
-  if (legacy && event == WorkspaceWindowEvent::Open) {
+  if (openWindowUsesName && event == WorkspaceWindowEvent::Open) {
     if ((kind == WorkspaceKind::Special) != isSpecialName(identifier)) {
       return false;
     }

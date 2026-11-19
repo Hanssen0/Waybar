@@ -77,7 +77,8 @@ struct WorkspaceIdentity {
   std::string name;
   WorkspaceKind kind = WorkspaceKind::Named;
 
-  bool legacy = false;
+  // IPC before addressable workspaces reports the name in openwindow.
+  bool openWindowUsesName = false;
 
   // Read off the address rather than stored alongside it, so the two cannot
   // disagree. Empty unless this workspace is Numbered.
