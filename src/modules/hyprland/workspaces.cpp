@@ -543,12 +543,13 @@ void Workspaces::onWindowOpened(std::string const& payload) {
   }
 
   std::string windowAddress = payload.substr(0, firstComma);
-  std::string workspaceName = payload.substr(firstComma + 1, secondComma - firstComma - 1);
+  std::string workspaceIdentifier = payload.substr(firstComma + 1, secondComma - firstComma - 1);
   std::string windowClass = payload.substr(secondComma + 1, thirdComma - secondComma - 1);
   std::string windowTitle = payload.substr(thirdComma + 1);
 
   bool isActive = m_currentActiveWindowAddress == windowAddress;
-  m_windowsToCreate.emplace_back(workspaceName, windowAddress, windowClass, windowTitle, isActive);
+  m_windowsToCreate.emplace_back(std::move(workspaceIdentifier), windowAddress, windowClass,
+                                 windowTitle, isActive);
 }
 
 void Workspaces::onWindowClosed(std::string const& addr) {
@@ -583,7 +584,7 @@ void Workspaces::onWindowClosed(std::string const& addr) {
 void Workspaces::onWindowMoved(std::string const& payload) {
   spdlog::trace("Window moved: {}", payload);
   updateWindowCount();
-  auto [windowAddress, _, workspaceName] = splitTriplePayload(payload);
+  auto [windowAddress, workspaceAddress, _] = splitTriplePayload(payload);
 
   WindowRepr windowRepr;
 
@@ -591,7 +592,7 @@ void Workspaces::onWindowMoved(std::string const& payload) {
   // and exit
   for (auto& window : m_windowsToCreate) {
     if (window.getAddress() == windowAddress) {
-      window.moveToWorkspace(workspaceName);
+      window.moveToWorkspace(std::move(workspaceAddress));
       return;
     }
   }
@@ -612,7 +613,7 @@ void Workspaces::onWindowMoved(std::string const& payload) {
   // ...and then add it to the new workspace
   if (!windowRepr.empty()) {
     m_orphanWindowMap.erase(windowAddress);
-    m_windowsToCreate.emplace_back(workspaceName, windowAddress, windowRepr);
+    m_windowsToCreate.emplace_back(std::move(workspaceAddress), windowAddress, windowRepr);
   }
 }
 
@@ -644,7 +645,9 @@ void Workspaces::onWindowTitleEvent(std::string const& payload) {
 
       // If the window was queued, rename it in the queue
       if (queuedWindow != m_windowsToCreate.end()) {
-        inserter = [queuedWindow](WindowCreationPayload wcp) { *queuedWindow = std::move(wcp); };
+        inserter = [queuedWindow](WindowCreationPayload wcp) {
+          queuedWindow->updateWindow(std::move(wcp));
+        };
       }
     }
   }

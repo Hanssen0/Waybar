@@ -17,6 +17,7 @@
 #include "AModule.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
+#include "modules/hyprland/workspace_identity.hpp"
 #include "util/enum.hpp"
 #include "util/regex_collection.hpp"
 
@@ -40,9 +41,9 @@ struct WindowRepr {
 
 class WindowCreationPayload {
  public:
-  WindowCreationPayload(const std::string& workspace_name, WindowAddress window_address,
+  WindowCreationPayload(std::string workspace_identifier, WindowAddress window_address,
                         WindowRepr window_repr);
-  WindowCreationPayload(const std::string& workspace_name, WindowAddress window_address,
+  WindowCreationPayload(std::string workspace_identifier, WindowAddress window_address,
                         const std::string& window_class, const std::string& window_title,
                         bool is_active);
   WindowCreationPayload(Json::Value const& client_data);
@@ -53,21 +54,24 @@ class WindowCreationPayload {
   WindowRepr repr(Workspaces& workspace_manager);
   void setActive(bool value) { m_isActive = value; }
 
-  std::string getWorkspaceName() const { return m_workspaceName; }
+  bool targetsWorkspace(const WorkspaceIdentity& workspace) const {
+    return workspace.matchesWindowDestination(m_workspaceIdentifier, m_workspaceEvent);
+  }
   WindowAddress getAddress() const { return m_windowAddress; }
 
-  void moveToWorkspace(std::string& new_workspace_name);
+  void moveToWorkspace(std::string workspace_address);
+  void updateWindow(WindowCreationPayload payload);
 
  private:
   void clearAddr();
-  void clearWorkspaceName();
 
   using Repr = WindowRepr;
   using ClassAndTitle = std::pair<std::string, std::string>;
   std::variant<Repr, ClassAndTitle> m_window;
 
   WindowAddress m_windowAddress;
-  std::string m_workspaceName;
+  std::string m_workspaceIdentifier;
+  WorkspaceWindowEvent m_workspaceEvent = WorkspaceWindowEvent::Move;
   bool m_isActive = false;
 
   int m_timeSpentUncreated = 0;

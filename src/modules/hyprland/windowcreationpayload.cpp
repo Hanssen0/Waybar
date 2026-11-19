@@ -24,31 +24,28 @@ static std::string makeValidUtf8(std::string text) {
 WindowCreationPayload::WindowCreationPayload(Json::Value const& client_data)
     : m_window(std::make_pair(makeValidUtf8(client_data["class"].asString()),
                               makeValidUtf8(client_data["title"].asString()))),
-      m_windowAddress(client_data["address"].asString()),
-      m_workspaceName(client_data["workspace"]["name"].asString()) {
+      m_windowAddress(client_data["address"].asString()) {
   clearAddr();
-  clearWorkspaceName();
 }
 
-WindowCreationPayload::WindowCreationPayload(const std::string& workspace_name,
+WindowCreationPayload::WindowCreationPayload(std::string workspace_identifier,
                                              WindowAddress window_address, WindowRepr window_repr)
     : m_window(std::move(window_repr)),
       m_windowAddress(std::move(window_address)),
-      m_workspaceName(std::move(workspace_name)) {
+      m_workspaceIdentifier(std::move(workspace_identifier)) {
   clearAddr();
-  clearWorkspaceName();
 }
 
-WindowCreationPayload::WindowCreationPayload(const std::string& workspace_name,
+WindowCreationPayload::WindowCreationPayload(std::string workspace_identifier,
                                              WindowAddress window_address,
                                              const std::string& window_class,
                                              const std::string& window_title, bool is_active)
     : m_window(std::make_pair(makeValidUtf8(window_class), makeValidUtf8(window_title))),
       m_windowAddress(std::move(window_address)),
-      m_workspaceName(std::move(workspace_name)),
+      m_workspaceIdentifier(std::move(workspace_identifier)),
+      m_workspaceEvent(WorkspaceWindowEvent::Open),
       m_isActive(is_active) {
   clearAddr();
-  clearWorkspaceName();
 }
 
 void WindowCreationPayload::clearAddr() {
@@ -62,26 +59,6 @@ void WindowCreationPayload::clearAddr() {
   if (m_windowAddress.starts_with(ADDR_PREFIX)) {
     m_windowAddress =
         m_windowAddress.substr(ADDR_PREFIX_LEN, m_windowAddress.length() - ADDR_PREFIX_LEN);
-  }
-}
-
-void WindowCreationPayload::clearWorkspaceName() {
-  // The workspace name may optionally feature "special:" at the beginning.
-  // If so, we need to remove it because the workspace is saved WITHOUT the
-  // special qualifier. The reasoning is that not all of Hyprland's IPC events
-  // use this qualifier, so it's better to be consistent about our uses.
-
-  static const std::string SPECIAL_QUALIFIER_PREFIX = "special:";
-  static const int SPECIAL_QUALIFIER_PREFIX_LEN = SPECIAL_QUALIFIER_PREFIX.length();
-
-  if (m_workspaceName.starts_with(SPECIAL_QUALIFIER_PREFIX)) {
-    m_workspaceName = m_workspaceName.substr(
-        SPECIAL_QUALIFIER_PREFIX_LEN, m_workspaceName.length() - SPECIAL_QUALIFIER_PREFIX_LEN);
-  }
-
-  std::size_t spaceFound = m_workspaceName.find(' ');
-  if (spaceFound != std::string::npos) {
-    m_workspaceName.erase(m_workspaceName.begin() + spaceFound, m_workspaceName.end());
   }
 }
 
@@ -101,8 +78,14 @@ bool WindowCreationPayload::isEmpty(Workspaces& workspace_manager) {
 
 int WindowCreationPayload::incrementTimeSpentUncreated() { return m_timeSpentUncreated++; }
 
-void WindowCreationPayload::moveToWorkspace(std::string& new_workspace_name) {
-  m_workspaceName = new_workspace_name;
+void WindowCreationPayload::moveToWorkspace(std::string workspace_address) {
+  m_workspaceIdentifier = std::move(workspace_address);
+  m_workspaceEvent = WorkspaceWindowEvent::Move;
+}
+
+void WindowCreationPayload::updateWindow(WindowCreationPayload payload) {
+  // Refresh class/title without replacing the queued destination or active state.
+  m_window = std::move(payload.m_window);
 }
 
 WindowRepr WindowCreationPayload::repr(Workspaces& workspace_manager) {

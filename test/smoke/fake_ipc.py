@@ -122,11 +122,16 @@ class Hyprland(Fake):
         windows = self.workspaces[self.active]
         return windows[-1] if windows else None
 
+    def workspace_identity(self, ws):
+        # Hyprland 0.57+ uses addresses in events, distinct from display names.
+        return {"id": ws, "address": str(ws), "type": "normal",
+                "name": "2₃" if ws == 2 else str(ws)}
+
     def workspace_json(self, ws):
         windows = self.workspaces[ws]
         focused = [w for w in windows if not w.get("pinned")]
         last = focused[-1] if focused else {"address": "0x0", "title": ""}
-        return {"id": ws, "name": str(ws), "monitor": OUTPUT, "monitorID": 0,
+        return {**self.workspace_identity(ws), "monitor": OUTPUT, "monitorID": 0,
                 "windows": len(windows), "hasfullscreen": False,
                 "lastwindow": last["address"], "lastwindowtitle": last["title"],
                 "ispersistent": False}
@@ -143,14 +148,14 @@ class Hyprland(Fake):
                     "id": 0, "name": OUTPUT, "description": "Headless output", "make": "",
                     "model": "", "serial": "", "width": WIDTH, "height": HEIGHT,
                     "refreshRate": 60.0, "x": 0, "y": 0,
-                    "activeWorkspace": {"id": self.active, "name": str(self.active)},
+                    "activeWorkspace": self.workspace_identity(self.active),
                     "specialWorkspace": {"id": 0, "name": ""}, "reserved": [0, 30, 0, 0],
                     "scale": 1.0, "transform": 0, "focused": True, "dpmsStatus": True,
                     "vrr": False, "disabled": False}])
             elif request == "j/clients":
                 body = json.dumps([{
                     "address": w["address"], "mapped": True, "hidden": False, "at": [0, 30],
-                    "size": [WIDTH, HEIGHT - 30], "workspace": {"id": ws, "name": str(ws)},
+                    "size": [WIDTH, HEIGHT - 30], "workspace": self.workspace_identity(ws),
                     "floating": w.get("pinned", False), "pseudo": False, "monitor": 0,
                     "class": w["class"],
                     "title": w["title"], "initialClass": w["class"], "initialTitle": w["title"],
@@ -185,16 +190,17 @@ class Hyprland(Fake):
 
     def op_workspace(self, name):
         ws, previous = int(name), self.active
+        display = self.workspace_identity(ws)["name"]
         if ws not in self.workspaces:
             self.workspaces[ws] = []
-            self.emit(f"createworkspace>>{ws}", f"createworkspacev2>>{ws},{ws}")
+            self.emit(f"createworkspace>>{ws}", f"createworkspacev2>>{ws},{display}")
         self.active = ws
-        self.emit(f"workspace>>{ws}", f"workspacev2>>{ws},{ws}")
+        self.emit(f"workspace>>{ws}", f"workspacev2>>{ws},{display}")
         self.emit_focus()
         if not self.workspaces[previous]:
             del self.workspaces[previous]
             self.emit(f"destroyworkspace>>{previous}",
-                      f"destroyworkspacev2>>{previous},{previous}")
+                      f"destroyworkspacev2>>{previous},{self.workspace_identity(previous)['name']}")
 
     def op_pinned_switch(self, name):
         # A pinned window keeps its focus: the new workspace holds it, but has no last window.
