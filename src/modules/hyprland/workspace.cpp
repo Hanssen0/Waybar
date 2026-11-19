@@ -296,7 +296,7 @@ void Workspace::insertWindow(WindowCreationPayload create_window_payload) {
 }
 
 bool Workspace::onWindowOpened(WindowCreationPayload const& create_window_payload) {
-  if (create_window_payload.getWorkspaceName() == name()) {
+  if (create_window_payload.targetsWorkspace(identity())) {
     insertWindow(create_window_payload);
     return true;
   }

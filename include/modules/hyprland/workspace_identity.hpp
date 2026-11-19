@@ -11,6 +11,7 @@ namespace waybar::modules::hyprland {
 // The declaration order is load-bearing: it is the display order the
 // workspaces module groups by, which workspaceKindRank() reads off directly.
 enum class WorkspaceKind { Numbered, Named, Special };
+enum class WorkspaceWindowEvent { Open, Move };
 
 // The hyprwm/Hyprland#16140 IPC `type` name for a kind, which spells out all
 // three kinds. Hyprland has since collapsed numbered and named into `normal`,
@@ -76,6 +77,9 @@ struct WorkspaceIdentity {
   std::string name;
   WorkspaceKind kind = WorkspaceKind::Named;
 
+  // IPC before addressable workspaces reports the name in openwindow.
+  bool openWindowUsesName = false;
+
   // Read off the address rather than stored alongside it, so the two cannot
   // disagree. Empty unless this workspace is Numbered.
   std::optional<int> number() const;
@@ -100,6 +104,8 @@ struct WorkspaceIdentity {
   bool matches(const std::string& identifier) const {
     return address == identifier || matches(WorkspaceSelector{identifier});
   }
+
+  bool matchesWindowDestination(const std::string& identifier, WorkspaceWindowEvent event) const;
 
   bool operator==(const WorkspaceIdentity& other) const { return address == other.address; }
 };

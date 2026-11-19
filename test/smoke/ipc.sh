@@ -82,14 +82,25 @@ hypr_config='{
   "modules-center": ["hyprland/window"],
   "modules-right": ["hyprland/windowcount", "hyprland/language"],
   "hyprland/workspaces": {"format": "ws {name}{icon}",
-    "format-icons": {"active": "*", "default": ""}},
+    "format-icons": {"active": "*", "default": ""},
+    "workspace-taskbar": {"enable": true, "format": "task: {title}"}},
   "hyprland/window": {"format": "win: {title}"},
   "hyprland/windowcount": {"format": "count {}"},
   "hyprland/language": {"format": "kb {long}"},
   "hyprland/submap": {"format": "mode {}"}
 }'
 launch hyprland "$hypr_config"
-"${A11Y[@]}" "ws 1*" "ws 2" "win: foot ~" "count 1" "kb English (US)"
+"${A11Y[@]}" "ws 1*" "ws 2₃" "win: foot ~" "count 1" "kb English (US)"
+# The window module can show the focused title even if the workspace taskbar
+# dropped the open event. Assert on the taskbar's own label before any move.
+step 'workspace 2'
+"${A11Y[@]}" "ws 2₃*" "task: Waybar wiki"
+step 'open kitty "new task"'
+"${A11Y[@]}" "task: new task"
+step 'close'
+"${A11Y[@]}" --absent "task: new task"
+step 'workspace 1'
+"${A11Y[@]}" "ws 1*"
 step 'workspace 3'
 "${A11Y[@]}" "ws 3*" "count 0"
 "${A11Y[@]}" --absent "ws 1*" "foot ~"

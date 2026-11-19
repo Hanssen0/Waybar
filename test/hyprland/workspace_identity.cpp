@@ -331,3 +331,67 @@ TEST_CASE("a persistent-workspaces entry finds the live generic special workspac
   REQUIRE(placeholderIdentity.has_value());
   REQUIRE(placeholderIdentity->matches(liveIdentity->asSelector()));
 }
+
+TEST_CASE("window events target modern workspace addresses, not display names",
+          "[workspace_identity]") {
+  using hyprland::WorkspaceWindowEvent;
+
+  Json::Value numbered;
+  numbered["address"] = "22";
+  numbered["id"] = 22;
+  numbered["type"] = "normal";
+  numbered["name"] = "2₃";
+  const auto target = parseWorkspaceIdentity(numbered);
+  REQUIRE(target.has_value());
+
+  numbered["address"] = "21";
+  numbered["id"] = 21;
+  numbered["name"] = "22";
+  const auto other = parseWorkspaceIdentity(numbered);
+  REQUIRE(other.has_value());
+
+  for (const auto event : {WorkspaceWindowEvent::Open, WorkspaceWindowEvent::Move}) {
+    REQUIRE(target->matchesWindowDestination("22", event));
+    REQUIRE_FALSE(target->matchesWindowDestination("2₃", event));
+    REQUIRE_FALSE(other->matchesWindowDestination("22", event));
+  }
+
+  Json::Value workspace;
+  workspace["address"] = "web browser";
+  workspace["type"] = "normal";
+  workspace["name"] = "Browser";
+  const auto named = parseWorkspaceIdentity(workspace);
+  REQUIRE(named.has_value());
+  REQUIRE(named->matchesWindowDestination("web browser", WorkspaceWindowEvent::Open));
+  REQUIRE_FALSE(named->matchesWindowDestination("web", WorkspaceWindowEvent::Open));
+
+  workspace["address"] = "special:music";
+  workspace["type"] = "special";
+  workspace["name"] = "special:music";
+  const auto special = parseWorkspaceIdentity(workspace);
+  REQUIRE(special.has_value());
+  REQUIRE(special->matchesWindowDestination("special:music", WorkspaceWindowEvent::Open));
+  REQUIRE_FALSE(special->matchesWindowDestination("music", WorkspaceWindowEvent::Open));
+}
+
+TEST_CASE("legacy Hyprland window opens use names and moves use numeric IDs",
+          "[workspace_identity]") {
+  using hyprland::WorkspaceWindowEvent;
+
+  Json::Value workspace;
+  workspace["id"] = 22;
+  workspace["name"] = "2₃";
+  const auto numbered = parseWorkspaceIdentity(workspace);
+  REQUIRE(numbered.has_value());
+  REQUIRE(numbered->matchesWindowDestination("2₃", WorkspaceWindowEvent::Open));
+  REQUIRE_FALSE(numbered->matchesWindowDestination("22", WorkspaceWindowEvent::Open));
+  REQUIRE(numbered->matchesWindowDestination("22", WorkspaceWindowEvent::Move));
+
+  workspace["id"] = -98;
+  workspace["name"] = "special:music";
+  const auto special = parseWorkspaceIdentity(workspace);
+  REQUIRE(special.has_value());
+  REQUIRE(special->matchesWindowDestination("special:music", WorkspaceWindowEvent::Open));
+  REQUIRE_FALSE(special->matchesWindowDestination("music", WorkspaceWindowEvent::Open));
+  REQUIRE(special->matchesWindowDestination("-98", WorkspaceWindowEvent::Move));
+}
